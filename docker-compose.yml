@@ -1,21 +1,26 @@
-version: '3.5'
+version: '2.4'
 services:
   base:
     image: alpine:3.8
     command: sleep 10000d
     privileged: true 
+    networks:
+      - jumpserver
     ports:
 #     ldap
-      - "389:389"
-      - "636:636"
+#      - "389:389"
+#      - "636:636"
 #     radius
       - "1812:1812/udp"
       - "1813:1813/udp"
 #    nginx
       - "82:80"
+
   nginx:
     image: nginx:1.19-alpine
     restart: unless-stopped
+    networks:
+      - jumpserver
     ports:
       - "80:80"
     volumes:
@@ -25,6 +30,7 @@ services:
   ipsec:
     build:
         context: ipsec/ipsec/
+    privileged: true
     network_mode: "service:base"
     environment:
       USER: jumpf2
@@ -32,7 +38,6 @@ services:
       SHARED: vpn.sechnic.top
       SERVER: vpn.sechnic.top
       SUBNET: 172.31.0.0/16
-    privileged: true
 
   ldap-account-manager:
     image: ldapaccountmanager/lam:7.0
@@ -71,3 +76,130 @@ services:
     network_mode: "service:base"
     volumes:
       - ./ldapRadius/radiuscfg:/etc/raddb
+
+  mysql:
+    image: jumpserver/jms_mysql:${Version}
+    container_name: jms_mysql
+    restart: always
+    tty: true
+    environment:
+      DB_PORT: $DB_PORT
+      DB_USER: $DB_USER
+      DB_PASSWORD: $DB_PASSWORD
+      DB_NAME: $DB_NAME
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - jumpserver
+
+  redis:
+    image: jumpserver/jms_redis:${Version}
+    container_name: jms_redis
+    restart: always
+    tty: true
+    environment:
+      REDIS_PORT: $REDIS_PORT
+      REDIS_PASSWORD: $REDIS_PASSWORD
+    volumes:
+      - redis-data:/var/lib/redis/
+    networks:
+      - jumpserver
+
+  core:
+    image: jumpserver/jms_core:${Version}
+    container_name: jms_core
+    restart: always
+    tty: true
+    environment:
+      SECRET_KEY: $SECRET_KEY
+      BOOTSTRAP_TOKEN: $BOOTSTRAP_TOKEN
+      DB_HOST: $DB_HOST
+      DB_PORT: $DB_PORT
+      DB_USER: $DB_USER
+      DB_PASSWORD: $DB_PASSWORD
+      DB_NAME: $DB_NAME
+      REDIS_HOST: $REDIS_HOST
+      REDIS_PORT: $REDIS_PORT
+      REDIS_PASSWORD: $REDIS_PASSWORD
+    depends_on:
+      - mysql
+      - redis
+    volumes:
+      - core-data:/opt/jumpserver/data
+    networks:
+      - jumpserver
+
+  koko:
+    image: jumpserver/jms_koko:${Version}
+    container_name: jms_koko
+    restart: always
+    tty: true
+    environment:
+      CORE_HOST: http://core:8080
+      BOOTSTRAP_TOKEN: $BOOTSTRAP_TOKEN
+    depends_on:
+      - core
+      - mysql
+      - redis
+    volumes:
+      - koko-keys:/opt/koko/data/keys
+    ports:
+      - 2222:2222
+    networks:
+      - jumpserver
+
+  guacamole:
+    image: jumpserver/jms_guacamole:${Version}
+    container_name: jms_guacamole
+    restart: always
+    tty: true
+    environment:
+      JUMPSERVER_SERVER: http://core:8080
+      BOOTSTRAP_TOKEN: $BOOTSTRAP_TOKEN
+      JUMPSERVER_KEY_DIR: /config/guacamole/keys
+      GUACAMOLE_HOME: /config/guacamole
+      GUACAMOLE_LOG_LEVEL: ERROR
+      JUMPSERVER_ENABLE_DRIVE: 'true'
+    depends_on:
+      - core
+      - mysql
+      - redis
+    volumes:
+      - guacamole-keys:/config/guacamole/keys
+    networks:
+      - jumpserver
+
+  nginx:
+    image: jumpserver/jms_nginx:${Version}
+    container_name: jms_nginx
+    restart: always
+    tty: true
+    depends_on:
+      - core
+      - koko
+      - mysql
+      - redis
+    volumes:
+      - core-data:/opt/jumpserver/data
+    ports:
+      - 81:80
+    networks:
+      - jumpserver
+
+volumes:
+  mysql-data:
+  redis-data:
+  core-data:
+  koko-keys:
+  guacamole-keys:
+
+networks:
+  jumpserver:
+    driver: bridge
+    name: jumpserver
+    ipam:
+      config:
+        - subnet: "172.18.0.0/24"
+          gateway: "172.18.0.1"
+    driver_opts:
+      com.docker.network.bridge.name: br-jumpserver

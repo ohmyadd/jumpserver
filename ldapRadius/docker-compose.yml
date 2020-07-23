@@ -1,0 +1,42 @@
+version: '3.5'
+services:
+  ldap-account-manager:
+    image: ldapaccountmanager/lam:7.0
+    restart: unless-stopped
+    ports:
+      - "82:80"
+    volumes:
+      - ./lamdata/lam.conf:/var/lib/ldap-account-manager/config/lam.conf
+      - ./lamdata/config.cfg:/etc/ldap-account-manager/config.cfg
+    environment:
+      - LAM_SKIP_PRECONFIGURE=true
+  ldap:
+    image: osixia/openldap:1.3.0
+    restart: unless-stopped
+    ports:
+      - "389:389"
+      - "636:636"
+    environment:
+      - LDAP_ORGANISATION=LDAP Account Manager Demo
+      - LDAP_DOMAIN=sechnic.com
+      - LDAP_BASE_DN=dc=sechnic,dc=com
+      - LDAP_ADMIN_PASSWORD=adminpwd
+      - LDAP_CONFIG_PASSWORD=configpwd
+      - LDAP_READONLY_USER=true
+      - LDAP_READONLY_USER_USERNAME=readonly
+      - LDAP_READONLY_USER_PASSWORD=readonlypwd
+    command: "--loglevel info --copy-service"
+    volumes:
+      - ./ldapdata/db:/var/lib/ldap
+      - ./ldapdata/etc:/etc/ldap/slapd.d
+      - ./ldapcfg/custom-ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom
+      - ./ldapcfg/:/ldapcfg
+
+  radius:
+    image: freeradius/freeradius-server:3.0.20
+    restart: unless-stopped
+    ports:
+      - "1812:1812/udp"
+      - "1813:1813/udp"
+    volumes:
+      - ./radiuscfg:/etc/raddb

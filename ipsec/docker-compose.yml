@@ -1,0 +1,15 @@
+version: '3.5'
+
+services:
+  ipsec:
+    build:
+        context: ipsec/
+    restart: unless-stopped
+    environment:
+        USER: jumpf2
+        PASS: jumpf2pwd
+        SHARED: vpn.sechnic.top
+        SERVER: vpn.sechnic.top
+        SUBNET: 172.31.0.0/16
+    network_mode: host
+    privileged: true

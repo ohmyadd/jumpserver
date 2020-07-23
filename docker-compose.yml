@@ -1,0 +1,73 @@
+version: '3.5'
+services:
+  base:
+    image: alpine:3.8
+    command: sleep 10000d
+    privileged: true 
+    ports:
+#     ldap
+      - "389:389"
+      - "636:636"
+#     radius
+      - "1812:1812/udp"
+      - "1813:1813/udp"
+#    nginx
+      - "82:80"
+  nginx:
+    image: nginx:1.19-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d:/etc/nginx/conf.d
+
+  ipsec:
+    build:
+        context: ipsec/ipsec/
+    network_mode: "service:base"
+    environment:
+      USER: jumpf2
+      PASS: jumpf2pwd
+      SHARED: vpn.sechnic.top
+      SERVER: vpn.sechnic.top
+      SUBNET: 172.31.0.0/16
+    privileged: true
+
+  ldap-account-manager:
+    image: ldapaccountmanager/lam:7.0
+    restart: unless-stopped
+    network_mode: "service:base"
+    volumes:
+      - ./ldapRadius/lamdata/lam.conf:/var/lib/ldap-account-manager/config/lam.conf
+      - ./ldapRadius/lamdata/config.cfg:/etc/ldap-account-manager/config.cfg
+    environment:
+      - LAM_SKIP_PRECONFIGURE=true
+
+  ldap:
+    image: osixia/openldap:1.3.0
+    restart: unless-stopped
+    network_mode: "service:base"
+    cap_add: ["NET_ADMIN"]
+    environment:
+      - LDAP_ORGANISATION=LDAP Account Manager Demo
+      - LDAP_DOMAIN=sechnic.com
+      - LDAP_BASE_DN=dc=sechnic,dc=com
+      - LDAP_ADMIN_PASSWORD=adminpwd
+      - LDAP_CONFIG_PASSWORD=configpwd
+      - LDAP_READONLY_USER=true
+      - LDAP_READONLY_USER_USERNAME=readonly
+      - LDAP_READONLY_USER_PASSWORD=readonlypwd
+    command: "--loglevel debug --copy-service"
+    volumes:
+      - ./ldapRadius/ldapdata/db:/var/lib/ldap
+      - ./ldapRadius/ldapdata/etc:/etc/ldap/slapd.d
+      - ./ldapRadius/ldapcfg/custom-ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom
+      - ./ldapRadius/ldapcfg/:/ldapcfg
+
+  radius:
+    image: freeradius/freeradius-server:3.0.20
+    restart: unless-stopped
+    network_mode: "service:base"
+    volumes:
+      - ./ldapRadius/radiuscfg:/etc/raddb

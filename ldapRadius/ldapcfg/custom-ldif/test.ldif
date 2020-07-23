@@ -1,0 +1,5 @@
+dn: olcDatabase={1}{{ LDAP_BACKEND }},cn=config
+changetype: modify
+replace: olcAccess
+olcAccess: {0}to attrs=userPassword,sambaHomeDrive,sambaAcctFlags,displayName,shadowLastChange,sambaNTPassword,sambaPwdLastSet by self write by dn.base="cn=manager,ou=users,{{ LDAP_BASE_DN }}" write by anonymous auth by * none
+olcAccess: {1}to * by self read by dn.base="cn=manager,ou=users,dc=sechnic,dc=com" write by dn="cn={{ LDAP_READONLY_USER_USERNAME }},{{ LDAP_BASE_DN }}" read by * search

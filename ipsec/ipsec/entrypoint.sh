@@ -29,8 +29,4 @@ then
     sed -i "s:SUBNET:$SUBNET:" /etc/ipsec.conf
 fi
 
-
-
-
-
 ipsec start --nofork

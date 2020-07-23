@@ -1,0 +1,4 @@
+nebula/config/*.crt
+nebula/config/*.key
+
+ldapRadius/ldapdata

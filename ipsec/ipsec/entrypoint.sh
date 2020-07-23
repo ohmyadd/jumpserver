@@ -29,4 +29,5 @@ then
     sed -i "s:SUBNET:$SUBNET:" /etc/ipsec.conf
 fi
 
+rm /var/run/starter.charon.pid
 ipsec start --nofork

@@ -4,15 +4,16 @@ services:
     image: alpine:3.8
     command: sleep 10000d
     privileged: true 
+    restart: unless-stopped
     networks:
       - jumpserver
     ports:
 #     ldap
-#      - "389:389"
-#      - "636:636"
+      - "389:389"
+      - "636:636"
 #     radius
-#      - "1812:1812/udp"
-#      - "1813:1813/udp"
+      - "1812:1812/udp"
+      - "1813:1813/udp"
 #     lam web
       - "82:80"
 
@@ -32,6 +33,7 @@ services:
         context: ipsec/ipsec/
     privileged: true
     network_mode: "service:base"
+    restart: unless-stopped
     environment:
       USER: jumpf2
       PASS: jumpf2pwd
@@ -76,6 +78,7 @@ services:
     network_mode: "service:base"
     volumes:
       - ./ldapRadius/radiuscfg:/etc/raddb
+    command: "freeradius -f -X"
 
   mysql:
     image: jumpserver/jms_mysql:${Version}

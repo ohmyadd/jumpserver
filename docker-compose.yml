@@ -9,11 +9,11 @@ services:
       - jumpserver
     ports:
 #     ldap
-      - "389:389"
-      - "636:636"
+#      - "389:389"
+#      - "636:636"
 #     radius
-      - "1812:1812/udp"
-      - "1813:1813/udp"
+#      - "1812:1812/udp"
+#      - "1813:1813/udp"
 #     lam web
       - "82:80"
 
@@ -78,7 +78,7 @@ services:
     network_mode: "service:base"
     volumes:
       - ./ldapRadius/radiuscfg:/etc/raddb
-    command: "freeradius -f -X"
+    command: "freeradius -f"
 
   mysql:
     image: jumpserver/jms_mysql:${Version}

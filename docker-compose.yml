@@ -194,6 +194,7 @@ networks:
           gateway: "172.18.0.1"
     driver_opts:
       com.docker.network.bridge.name: br-jumpserver
+      com.docker.network.driver.mtu: 1400
 
 
 x-old:
